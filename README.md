@@ -1,3 +1,5 @@
+Proteodata:
+
 The csv input should contain:
 - accession of any kind
 - fold change data (will be log2 transformed)
