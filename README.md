@@ -1,3 +1,8 @@
+Comparison:
+Compares two proteomic datasets, evaluates correlation, finds common up- and downregulated proteins, performs the EnrichPathway analysis of the common data.
+The csv inputs can be the ProteomeDiscroverer output tables or other expression data.
+The pipeline presumes the fold change and p value data are not log2 nor log10.
+
 Proteodata:
 Creates volcano plot, showing significantly up- and downregulated proteins/genes.
 The csv input should contain:
