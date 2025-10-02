@@ -51,7 +51,7 @@ fit2 <- treat(fit2, lfc=log2(1.5))
 fit2 <- eBayes(fit2)
 
 # Filter out non-significant accessions based on the ANOVA results
-results <- topTable(fit2, adjust="BH", number=nrow(exprs)) # Adjust method for P-values, and select all rows
+results <- topTable(fit2, adjust="BH", number=nrow(exprs), genelist=rownames(exprs)) # Adjust method for P-values, and select all rows
 sigResults <- results[results$adj.P.Val < 0.05,] # Adjust threshold as needed
 
 write.csv(results, file="allresults.csv")
@@ -114,26 +114,42 @@ background <- background.predict(final_splsda, comp.predicted=2, dist = "centroi
 layout_matrix <- matrix(c(1, 2), ncol = 2, nrow = 1, byrow = TRUE)
 layout(layout_matrix, widths = c(4, 1)) # Adjust 'widths' as needed to control space allocation
 
-# Plot area for the main graph
-par(mar = c(5, 4, 4, 2) + 0.1)  # Adjust margins as needed, particularly the right margin to be smaller
-# Your plotting code here
-plotIndiv(final_splsda, comp=c(1,2), legend=FALSE,
-          ellipse = TRUE, title="PPGL TMT sPLS-DA", ind.names = FALSE, pch=16,
-          col=c("red", "navy", "darkmagenta", "darkorange"),
+# Reset the graphics device
+par(mar = c(5, 4, 4, 2) + 0.1)  # Reset to default margins
+
+# Set up the plot area: fig=c(left, right, bottom, top)
+# First plot uses 80% of width
+par(fig = c(0, 0.8, 0, 1))
+
+# Reset any existing graphics parameters
+dev.off()  # Only if there's an active plot
+par(mar = c(5, 4, 4, 2) + 0.1)  # Default margins
+
+# Create a layout matrix: 1=plot area, 2=legend area
+# This gives 80% of width to plot, 20% to legend
+layout_matrix <- matrix(c(1, 2), ncol=2, byrow=TRUE)
+layout(layout_matrix, widths=c(4, 1))  # 4:1 ratio for plot:legend
+
+# First plot area - the main plot
+par(mar = c(5, 4, 4, 0))  # Reduce right margin since legend will be there
+plotIndiv(final_splsda, comp=c(1,2), 
+          ellipse = FALSE, title="PPGL TMT sPLS-DA", 
+          ind.names = FALSE, pch=16,
+          legend = FALSE,
+          col=c("navy", "darkmagenta", "darkorange", "forestgreen"),
           style="graphics")
 
-# Switch to the second layout area for the legend
-par(mar = c(3, 0, 2, 2) + 0.1)  # Adjust margins to align the legend properly; left margin is minimized here
-
-# Since this area is for the legend only, you might not need a new plot. Instead, use plot.new() to create a blank area
+# Second plot area - just the legend
+par(mar = c(5, 0, 4, 2))  # Reduce left margin
 plot.new()
-
-# Add the legend
-legend("center", # Position the legend in the center of the allocated area
+legend("center", 
        legend = c("Not assigned", "RET", "SDHB", "VHL"),
-       col = c("red", "navy", "darkmagenta", "darkorange"),
-       pch = 16, # Symbol type
-       title = NA) # Adjust as needed
+       col = c("navy", "darkmagenta", "darkorange", "forestgreen"),
+       pch = 16, 
+       bty = "n")
+
+# Reset the layout
+layout(1)
 
 # get the sPLS-DA data
 loadings_comp1 <- final_splsda$loadings$X[,1] # For the first component
@@ -165,8 +181,10 @@ summary_table <- data.frame(Variable = rownames(loadings_all),
 
 write.csv(summary_table, file="slpsda_summary_wo_ctrls_perseus.csv")
 
+ppgldata_pca <- t(exprs_log2)  # All proteins, no filtering by significance
+
 #using the same data, perform PCA:
-ppglpca <- pca(ppgldata, 
+ppglpca <- pca(ppgldata_pca,
                  ncomp = 2,
                  center = TRUE,
                  scale = FALSE,
@@ -197,4 +215,5 @@ pheatmap(num_srn_mx)
 pheatmap(num_srn_mx, scale = "row", clustering_distance_rows = "correlation")
 pheatmap(num_srn_mx, scale = "row", color = colorRampPalette(c("green", "black", "red"))(50), legend = FALSE)
 pheatmap(num_srn_mx, labels_col = annotation_col, labels_row = NA, show_rownames = FALSE, scale = "row", color = colorRampPalette(c("green", "black", "red"))(50), legend = FALSE)
+
 # annotation_row=NA, annotation_names_row=FALSE, 
