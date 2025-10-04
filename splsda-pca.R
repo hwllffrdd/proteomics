@@ -181,10 +181,28 @@ summary_table <- data.frame(Variable = rownames(loadings_all),
 
 write.csv(summary_table, file="slpsda_summary_wo_ctrls_perseus.csv")
 
-ppgldata_pca <- t(exprs_log2)  # All proteins, no filtering by significance
+# Calculate mean intensity across all samples
+mean_intensity <- rowMeans(exprs, na.rm = TRUE)
 
-#using the same data, perform PCA:
-ppglpca <- pca(ppgldata_pca,
+# Keep proteins above a threshold (adjust based on your data distribution)
+# Look at the distribution first:
+hist(log10(mean_intensity), breaks = 50, main = "Distribution of Mean Intensities")
+
+# Example: Keep top 50% or proteins above certain threshold
+intensity_threshold <- quantile(mean_intensity, 0.5)  # Remove bottom 50%
+high_quality_proteins <- mean_intensity > intensity_threshold
+
+exprs_filtered <- exprs[high_quality_proteins, ]
+
+library(preprocessCore)
+exprs_quantile <- normalize.quantiles(as.matrix(exprs_filtered))
+rownames(exprs_quantile) <- rownames(exprs_filtered)
+colnames(exprs_quantile) <- colnames(exprs_filtered)
+
+exprs_quantile_log2 <- log2(exprs_quantile + 1)
+ppgldata_pca <- t(exprs_quantile_log2)
+
+ppglpca <- pca(ppgldata_pca, 
                  ncomp = 2,
                  center = TRUE,
                  scale = FALSE,
@@ -199,21 +217,27 @@ ppglpca <- pca(ppgldata_pca,
 #create the PCA plot:
 layout(matrix(1))
 plotIndiv(ppglpca, group = ppglcat,  legend = TRUE, title = 'PPGL TMT PCA',
-          ellipse = TRUE, ind.names = FALSE, cex=1.2, point.lwd = 1.05,
-          pch = 16, col = c("red", "navy", "darkmagenta", "darkorange"), style="graphics")
+          ellipse = FALSE, ind.names = FALSE, cex=1.2, point.lwd = 1.05,
+          pch = 16, col = c("navy", "darkmagenta", "darkorange", "forestgreen"), style="graphics")
 
 # Install/load pheatmap package
 install.packages("pheatmap")
 library(pheatmap)
 
-annotation_col <- ppglcat
+# Z-score normalization by row (protein)
+exprs_scaled <- t(apply(exprs_filtered_log2, 1, scale))
+colnames(exprs_scaled) <- colnames(exprs_filtered_log2)
 
-drows = dist(num_srn_mx, method = "minkowski")
-dcols = dist(t(num_srn_mx), method = "minkowski")
+# Create annotation dataframe for pheatmap
+annotation_col <- data.frame(Group = ppglcat)
+rownames(annotation_col) <- colnames(exprs_scaled)
 
-pheatmap(num_srn_mx)
-pheatmap(num_srn_mx, scale = "row", clustering_distance_rows = "correlation")
-pheatmap(num_srn_mx, scale = "row", color = colorRampPalette(c("green", "black", "red"))(50), legend = FALSE)
-pheatmap(num_srn_mx, labels_col = annotation_col, labels_row = NA, show_rownames = FALSE, scale = "row", color = colorRampPalette(c("green", "black", "red"))(50), legend = FALSE)
-
-# annotation_row=NA, annotation_names_row=FALSE, 
+# Unsupervised hierarchical clustering heatmap
+pheatmap(exprs_scaled, 
+         annotation_col = annotation_col,
+         show_rownames = FALSE,
+         scale = "none",  # Already scaled above
+         color = colorRampPalette(c("green", "black", "red"))(50),
+         clustering_distance_rows = "minkowski",  # or "correlation"
+         clustering_distance_cols = "minkowski",
+         clustering_method = "ward.D2")  # or "average", "complete"
